@@ -157,7 +157,7 @@ fun ChatToolbar(
     var expandedOptions by rememberSaveable { mutableStateOf(false) }
 
     TopAppBar(
-        title = { Text("AI Chat") },
+        title = { Text(if (chatId !=null)"AI Chat $chatId" else "AI Chat") },
         navigationIcon = {
             if (chatId != null) {
                 IconButton(onClick = { navController.popBackStack() }) {

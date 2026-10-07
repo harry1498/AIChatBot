@@ -2,6 +2,7 @@ package com.example.aichatbot.ui
 
 import android.util.Log
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,6 +38,7 @@ fun HistoryScreen(
 ) {
     ContentView(navController = navController, modifier = modifier)
 }
+
 private const val tag = "TEST_CHECK"
 private val mList = listOf(
     "One", "Two", "Three", "Four"
@@ -80,14 +82,14 @@ fun ContentView(
         ) {
             items(mList.size) { index ->
                 val message = mList[index]
-                RecentConversations(message)
+                RecentConversations(message, navController)
             }
         }
         Spacer(modifier = Modifier.height(20.dp))
 
         Button({
             Log.e(tag, "onCreate: Explaining")
-            navController.navigate(Screens.Chat(chatId = "1234567890"))
+            navController.navigate(Screens.Chat())
         }) {
             Row {
                 Icon(imageVector = Icons.Rounded.Add, contentDescription = "Add")
@@ -98,11 +100,14 @@ fun ContentView(
 }
 
 @Composable
-fun RecentConversations(message: String) {
+fun RecentConversations(message: String, navController: NavHostController) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 5.dp)
+            .clickable(true) {
+                navController.navigate(Screens.Chat(chatId = "1234567890"))
+            }
     ) {
         Text(
             text = message,
