@@ -1,4 +1,4 @@
-package com.example.aichatbot.chat
+package com.example.aichatbot.ui.chat
 
 enum class ErrorType {
     FAILURE,

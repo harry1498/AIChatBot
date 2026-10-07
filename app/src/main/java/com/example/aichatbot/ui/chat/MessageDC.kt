@@ -1,4 +1,4 @@
-package com.example.aichatbot.chat
+package com.example.aichatbot.ui.chat
 
 data class MessageDC(
     val message: String,

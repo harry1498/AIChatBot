@@ -1,4 +1,4 @@
-package com.example.aichatbot.chat
+package com.example.aichatbot.ui.chat
 
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf

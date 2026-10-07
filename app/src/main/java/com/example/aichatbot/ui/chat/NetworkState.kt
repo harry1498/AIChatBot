@@ -1,4 +1,4 @@
-package com.example.aichatbot.chat
+package com.example.aichatbot.ui.chat
 
 sealed class NetworkState {
     data class Success(val data: Any) : NetworkState()

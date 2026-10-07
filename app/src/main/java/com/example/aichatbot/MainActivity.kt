@@ -33,15 +33,29 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.aichatbot.ui.theme.AIChatBotTheme
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import com.example.aichatbot.Day_7.RecompositionPlayground
-import com.example.aichatbot.chat.ChatScreen
+import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import com.example.aichatbot.navigation.AppNavHost
+import com.example.aichatbot.navigation.NavigationItem
+import com.example.aichatbot.navigation.Screens
 
 class MainActivity : ComponentActivity() {
     private val TAG = "MainActivityTag"
@@ -51,144 +65,122 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             AIChatBotTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    RecompositionPlayground(innerPadding)
-//                    ContentView()
-//                    ModifierPlaygroundScreen()
+                val navController = rememberNavController()
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    bottomBar = { NavigationBarExample(navController = navController) }
+                ) { innerPadding ->
+                    AppNavHost(
+                        modifier = Modifier.padding(innerPadding),
+                        navController = navController,
+                        startDestination = Screens.Home
+                    )
                 }
             }
         }
 
 //        startActivity(Intent(this@MainActivity, Profile::class.java))
-
     }
+}
 
-    private val mList = listOf<String>(
-        "One", "Two", "Three", "Four"
+@Composable
+fun NavigationBarExample(navController: NavHostController) {
+    val navigationItems = listOf(
+        NavigationItem(
+            title = Screens.Home.title,
+            icon = Screens.Home.icon,
+            destination = Screens.Home
+        ),
+        NavigationItem(
+            title = Screens.History.title,
+            icon = Screens.History.icon,
+            destination = Screens.History
+        ),
+        NavigationItem(
+            title = Screens.Chat().title,
+            icon = Screens.Chat().icon,
+            destination = Screens.Chat()
+        ),
+        NavigationItem(
+            title = Screens.Settings.title,
+            icon = Screens.Settings.icon,
+            destination = Screens.Settings
+        )
     )
 
-    //    @Preview
-    @Composable
-    fun ContentView() {
-        return Column(
-            verticalArrangement = Arrangement.Top,
-            modifier = Modifier
-                .background(color = MaterialTheme.colorScheme.background)
-                .fillMaxSize()
-                .padding(20.dp)
-        ) {
-            Text(text = "Good Evening", style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(20.dp))
-            Text(text = "How can I help you?", style = MaterialTheme.typography.headlineMedium)
-            Spacer(modifier = Modifier.height(20.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Button({ Log.e(TAG, "onCreate: Writing") }, Modifier.weight(weight = 1f)) {
-                    Text(text = "Write")
-                }
-                Spacer(modifier = Modifier.width(20.dp))
-                Button({ Log.e(TAG, "onCreate: Explaining") }, Modifier.weight(weight = 1f)) {
-                    Text(text = "Explain")
-                }
-            }
-            Spacer(modifier = Modifier.height(20.dp))
-            Text(text = "Recent Conversations")
-            Spacer(modifier = Modifier.height(20.dp))
-            LazyColumn(
-                Modifier.weight(weight = 1f),
-//                reverseLayout = true,
-            ) {
-                items(mList.size) { index ->
-                    val message = mList[index]
-                    RecentConversations(message)
-//                    if (index % 2 == 0) SentMessage(message)
-//                    else ReceivedMessage(message)
-                }
-            }
-            Spacer(modifier = Modifier.height(20.dp))
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination = navBackStackEntry?.destination
 
-            Button({
-                Log.e(TAG, "onCreate: Explaining")
-                startActivity(Intent(this@MainActivity, ChatScreen::class.java))
-            }) {
-                Row {
-                    Icon(imageVector = Icons.Rounded.Add, contentDescription = "Add")
-                    Text(text = "Ask AI")
-                }
-            }
-        }
-    }
-
-    @Composable
-    fun RecentConversations(message: String) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 5.dp)
-        ) {
-            Text(
-                text = message,
-                modifier = Modifier
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+    NavigationBar {
+        navigationItems.forEach { item ->
+            val isSelected = currentDestination?.hierarchy?.any {
+                it.hasRoute(item.destination::class)
+            } == true
+            NavigationBarItem(
+                selected = isSelected,
+                onClick = {
+                    navController.navigate(item.destination) {
+                        popUpTo(navController.graph.startDestinationId) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+                icon = { Icon(imageVector = item.icon, contentDescription = null) },
+                label = { Text(item.title) }
             )
         }
     }
+}
 
-    @Composable
-    fun SentMessage(message: String) {
-        BoxWithConstraints(
+@Composable
+fun SentMessage(message: String) {
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 5.dp),
+        contentAlignment = Alignment.CenterEnd
+    ) {
+        Text(
+            text = message,
+            textAlign = TextAlign.End,
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 5.dp),
-            contentAlignment = Alignment.CenterEnd
-        ) {
-            Text(
-                text = message,
-                textAlign = TextAlign.End,
-                modifier = Modifier
-                    .widthIn(max = maxWidth * .75f)
-                    .background(
-                        Color.Blue.copy(alpha = .33f),
-                        shape = RoundedCornerShape(
-                            topStart = 5.dp,
-                            topEnd = 5.dp,
-                            bottomEnd = 5.dp,
-                        )
+                .widthIn(max = maxWidth * .75f)
+                .background(
+                    Color.Blue.copy(alpha = .33f), shape = RoundedCornerShape(
+                        topStart = 5.dp,
+                        topEnd = 5.dp,
+                        bottomEnd = 5.dp,
                     )
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
-            )
-        }
+                )
+                .padding(horizontal = 12.dp, vertical = 8.dp)
+        )
     }
+}
 
-    @Composable
-    fun ReceivedMessage(message: String) {
-        BoxWithConstraints(
-            Modifier
-                .padding(vertical = 5.dp)
-                .fillMaxWidth(),
-            contentAlignment = Alignment.CenterStart,
-        ) {
-            Text(
-                text = message.repeat(20),
-                textAlign = TextAlign.Start,
-                modifier = Modifier
-                    .widthIn(max = maxWidth * .75f)
-                    .background(
-                        Color.LightGray,
-                        shape = RoundedCornerShape(
-                            topStart = 5.dp,
-                            topEnd = 5.dp,
-                            bottomStart = 5.dp,
-                        )
+@Composable
+fun ReceivedMessage(message: String) {
+    BoxWithConstraints(
+        Modifier
+            .padding(vertical = 5.dp)
+            .fillMaxWidth(),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Text(
+            text = message.repeat(20),
+            textAlign = TextAlign.Start,
+            modifier = Modifier
+                .widthIn(max = maxWidth * .75f)
+                .background(
+                    Color.LightGray, shape = RoundedCornerShape(
+                        topStart = 5.dp,
+                        topEnd = 5.dp,
+                        bottomStart = 5.dp,
                     )
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
-            )
-        }
+                )
+                .padding(horizontal = 12.dp, vertical = 8.dp)
+        )
     }
 }
 

@@ -1,10 +1,6 @@
-package com.example.aichatbot.chat
+package com.example.aichatbot.ui.chat
 
-import android.os.Bundle
 import android.util.Log
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -12,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -22,7 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.AlertDialog
@@ -33,7 +30,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -41,9 +37,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -53,54 +47,47 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
 import com.example.aichatbot.ui.theme.AIChatBotTheme
 
-private val TAG = "TEST_CHECK"
+private const val TAG = "ChatScreenTag"
 
-class ChatScreen : ComponentActivity() {
-    private val viewModel by viewModels<ChatViewModel>()
+@Composable
+fun ChatScreen(
+    chatId: String? = null,
+    viewModel: ChatViewModel = viewModel(),
+    modifier: Modifier = Modifier,
+    navController: NavHostController,
+) {
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContent {
-            AIChatBotTheme {
-                Scaffold(Modifier.fillMaxSize(), topBar = {
-                    ChatToolbar(
-                        isEmptyChat = viewModel.messages.isEmpty(),
-                        clearChat = viewModel::clearChat,
-                        activityContext = this@ChatScreen
-                    )
-                }) { innerPadding ->
-                    ChatScreenContent()
-                }
-            }
-        }
+    Column() {
+        ChatToolbar(
+            isEmptyChat = viewModel.messages.isEmpty(),
+            clearChat = viewModel::clearChat,
+            chatId = chatId,
+            navController = navController
+        )
+
+        ChatScreenContent(viewModel = viewModel, modifier = modifier)
+    }
+}
+
+@Composable
+private fun ChatScreenContent(
+    viewModel: ChatViewModel,
+    modifier: Modifier = Modifier
+) {
+    LaunchedEffect(Unit) {
+        Log.d(TAG, "ChatScreenContent: Inside Launch Effect")
+        viewModel.loadData()
     }
 
-    //    @Preview
-    @Composable
-    private fun ChatScreenContent() {
-        var name by remember { mutableStateOf("") }
-        var age by rememberSaveable { mutableIntStateOf(0) }
-
-        Log.d(TAG, "ChatScreenContent: Name* - $name")
-        Log.d(TAG, "ChatScreenContent: Age* - $age")
-
-        name = "John"
-        age = 28
-
-        Log.d(TAG, "ChatScreenContent: Name - $name")
-        Log.d(TAG, "ChatScreenContent: Age - $age")
-
-
-        Log.d(TAG, "ChatScreenContent: Composing")
-        LaunchedEffect(Unit) {
-            Log.d(TAG, "ChatScreenContent: Inside Launch Effect")
-            viewModel.loadData()
-        }
-        if (viewModel.isLoading) LoadingIndicator()
-        else Column(
-            Modifier
+    if (viewModel.isLoading) {
+        LoadingIndicator()
+    } else {
+        Column(
+            modifier = modifier
                 .background(Color.LightGray)
                 .fillMaxSize()
         ) {
@@ -115,8 +102,10 @@ class ChatScreen : ComponentActivity() {
                 sendMessage = viewModel::sendMessage
             )
         }
+    }
 
-        if (viewModel.error != null) ErrorDialog(
+    if (viewModel.error != null) {
+        ErrorDialog(
             error = viewModel.error!!,
             dismissErrorDialog = viewModel::dismissErrorDialog,
             retryAction = viewModel::retry
@@ -125,7 +114,11 @@ class ChatScreen : ComponentActivity() {
 }
 
 @Composable
-fun ErrorDialog(error: ErrorDC, dismissErrorDialog: () -> Unit, retryAction: () -> Unit) {
+fun ErrorDialog(
+    error: ErrorDC,
+    dismissErrorDialog: () -> Unit,
+    retryAction: () -> Unit
+) {
     val isFailure = error.type == ErrorType.FAILURE
     val positiveBtnText = if (isFailure) "Retry" else "OK"
 
@@ -139,9 +132,11 @@ fun ErrorDialog(error: ErrorDC, dismissErrorDialog: () -> Unit, retryAction: () 
             }
         },
         dismissButton = {
-            if (isFailure) Button(onClick = dismissErrorDialog) { Text("Cancel") }
-            else null
-        })
+            if (isFailure) {
+                Button(onClick = dismissErrorDialog) { Text("Cancel") }
+            } else null
+        }
+    )
 }
 
 @Composable
@@ -153,32 +148,47 @@ private fun LoadingIndicator() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatToolbar(isEmptyChat: Boolean, clearChat: () -> Unit, activityContext: ComponentActivity) {
+fun ChatToolbar(
+    isEmptyChat: Boolean,
+    clearChat: () -> Unit,
+    chatId: String?,
+    navController: NavHostController,
+) {
     var expandedOptions by rememberSaveable { mutableStateOf(false) }
 
-    TopAppBar(title = { Text("My App Title") }, navigationIcon = {
-        IconButton(onClick = { activityContext.finish() }) {
-            Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
-        }
-    }, actions = {
-        if (isEmptyChat) return@TopAppBar
-        Box(contentAlignment = Alignment.TopEnd) {
-            IconButton(onClick = { expandedOptions = !expandedOptions }) {
-                Icon(Icons.Filled.MoreVert, contentDescription = "Settings")
+    TopAppBar(
+        title = { Text("AI Chat") },
+        navigationIcon = {
+            if (chatId != null) {
+                IconButton(onClick = { navController.popBackStack() }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                }
             }
+        },
+        actions = {
+            if (isEmptyChat) return@TopAppBar
+            Box(contentAlignment = Alignment.TopEnd) {
+                IconButton(onClick = { expandedOptions = !expandedOptions }) {
+                    Icon(Icons.Filled.MoreVert, contentDescription = "Settings")
+                }
 
-            DropdownMenu(
-                expanded = expandedOptions,
-                onDismissRequest = { expandedOptions = false },
-                modifier = Modifier.background(Color.White)
-            ) {
-                DropdownMenuItem(text = { Text("Clear Chat") }, onClick = {
-                    expandedOptions = false
-                    clearChat()
-                })
+                DropdownMenu(
+                    expanded = expandedOptions,
+                    onDismissRequest = { expandedOptions = false },
+                    modifier = Modifier.background(Color.White)
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Clear Chat") },
+                        onClick = {
+                            expandedOptions = false
+                            clearChat()
+                        }
+                    )
+                }
             }
-        }
-    })
+        },
+        windowInsets = WindowInsets(0, 0, 0, 0)
+    )
 }
 
 @Composable
